@@ -28,8 +28,10 @@ html,body{width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:
 .vhn{font-size:11px;font-weight:700;color:#ddeeff;letter-spacing:.06em}
 .vhw{display:flex;align-items:center;gap:6px}
 .vhlb{font-size:9px;letter-spacing:.12em;color:rgba(0,220,180,.6)}
-.vhb{width:100px;height:5px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
-.vhf{height:100%;background:#00dcc0;border-radius:2px;transition:width .3s}
+.vhb{width:160px;height:14px;background:rgba(0,0,0,.5);border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,.12);box-shadow:0 0 8px rgba(0,0,0,.4)}
+.vhf{height:100%;background:#00dcc0;border-radius:2px;transition:width .2s,background .3s,box-shadow .3s}
+.vhf.lopHp{animation:hpulse .55s ease-in-out infinite}
+@keyframes hpulse{0%,100%{opacity:1}50%{opacity:.45}}
 .vhm{text-align:center}
 .vhfl{font-size:9px;letter-spacing:.22em;color:rgba(200,230,255,.28);text-transform:uppercase}
 .vhsc{font-size:22px;font-weight:900;color:#00dcc0;letter-spacing:-1px;font-family:Georgia,serif}
@@ -119,7 +121,7 @@ canvas#vc{position:absolute;inset:0;width:100%;height:100%}
       <div class="vhw">
         <div class="vhlb">HP</div>
         <div class="vhb"><div class="vhf" id="vhp" style="width:100%"></div></div>
-        <div style="font-size:9px;color:rgba(200,230,255,.35);margin-left:4px" id="vhpn">10/10</div>
+        <div style="font-size:11px;font-weight:700;color:rgba(220,240,255,.7);margin-left:6px;font-family:'Courier New',monospace" id="vhpn">10/10</div>
       </div>
       <div class="vhw" id="vshieldrow" style="display:none">
         <div class="vhlb" style="color:#6ee7f7">SH</div>
@@ -179,6 +181,7 @@ var W=document.getElementById('vp');
 var cv=document.getElementById('vc');
 var c2=cv.getContext('2d');
 var TILE=32,COLS=23,ROWS=17;
+var ZOOM=1.55; // camera zoom — higher = closer to player
 var TW=0,TF=1,TE=2,TC=3,TT=4,TCOR=5; // TCOR = corridor tile
 var MS_PER_FRAME=1000/60;
 var lastTime=0;
@@ -307,7 +310,15 @@ function spawnBoss(room,floor){
   var ex=room.cx*TILE+TILE/2,ey=room.cy*TILE+TILE/2;
   return{x:ex,y:ey,tp:'BOSS',hp:hp,maxHp:hp,spd:1.0+floor*.05,dmg:2,sz:16,
     col:'#fbbf24',sr:30,xp:15,sc:200,scd:30,fl:0,dead:false,
-    explodes:false,ghost:false,phaseTimer:0,isBoss:true};
+    explodes:false,ghost:false,phaseTimer:0,isBoss:true,isSuperBoss:false,enraged:false};
+}
+
+function spawnSuperBoss(room,floor){
+  var hp=80+floor*15;
+  var ex=room.cx*TILE+TILE/2,ey=room.cy*TILE+TILE/2;
+  return{x:ex,y:ey,tp:'SUPERBOSS',hp:hp,maxHp:hp,spd:1.3+floor*.04,dmg:3,sz:22,
+    col:'#ff6600',sr:16,xp:40,sc:800,scd:16,fl:0,dead:false,
+    explodes:false,ghost:false,phaseTimer:0,isBoss:true,isSuperBoss:true,enraged:false};
 }
 
 /* ── GAME INIT ──────────────────────────────────────── */
@@ -326,7 +337,7 @@ function initGame(){
       lifesteal:false,aoe:false,freeze:false,
       ups:[],passives:[]},
     ens:ens,ebs:[],pts:[],pks:[],
-    cam:{x:px-cv.width/2,y:py-cv.height/2},
+    cam:{x:px,y:py},
     shk:0,frm:0,over:false,
     bossFloor:false,
   };
@@ -335,11 +346,12 @@ function initGame(){
 
 function buildEnemies(rooms,floor){
   var ens=[];
-  var isBossFloor=floor>0&&floor%5===0;
+  var isSuperBoss=floor>0&&floor%10===0;
+  var isBossFloor=!isSuperBoss&&floor>0&&floor%5===0;
   for(var i=1;i<rooms.length;i++){
-    if(isBossFloor&&i===rooms.length-1){
-      ens.push(spawnBoss(rooms[i],floor));
-      continue;
+    if(i===rooms.length-1){
+      if(isSuperBoss){ens.push(spawnSuperBoss(rooms[i],floor));continue;}
+      if(isBossFloor){ens.push(spawnBoss(rooms[i],floor));continue;}
     }
     var base=2+Math.floor(floor*0.7);
     var cnt=ri(base,base+2);
@@ -354,14 +366,15 @@ function nextFloor(){
   G.map=fg.map;G.rooms=fg.rooms;
   var s=fg.rooms[0];
   G.p.x=s.cx*TILE+TILE/2;G.p.y=s.cy*TILE+TILE/2;
-  G.cam.x=G.p.x-cv.width/2;G.cam.y=G.p.y-cv.height/2;
+  G.cam.x=G.p.x;G.cam.y=G.p.y;
   G.ens=buildEnemies(fg.rooms,G.floor);
   G.ebs=[];G.pts=[];G.pks=[];
   G.bossFloor=G.floor%5===0;
+  var isSB=G.floor%10===0;
   var b=getBiome(G.floor);
-  var msg=G.bossFloor?'FLOOR '+G.floor+' - BOSS AWAITS':b.name+' - FLOOR '+G.floor;
+  var msg=isSB?'FLOOR '+G.floor+' \u2014 SUPER BOSS INCOMING!':G.bossFloor?'FLOOR '+G.floor+' \u2014 BOSS AWAITS':b.name+' \u2014 FLOOR '+G.floor;
   toast(msg);
-  flashScreen(G.bossFloor?'rgba(255,180,0,.25)':'rgba(0,220,180,.15)');
+  flashScreen(isSB?'rgba(255,80,0,.35)':G.bossFloor?'rgba(255,180,0,.25)':'rgba(0,220,180,.15)');
   updHUD();
 }
 
@@ -432,6 +445,7 @@ function shoot(){
     if(m===0)return;dir={x:dx/m,y:dy/m};
   }
   p.fcd=p.rapid?Math.floor(p.fr*.4):p.fr;
+  if(p.bloodlust&&p.hp<p.maxHp*0.35)p.fcd=Math.floor(p.fcd*0.5);
   for(var i=0;i<p.ms;i++){
     var ang=Math.atan2(dir.y,dir.x)+(i-(p.ms-1)/2)*.22;
     p.buls.push({x:p.x,y:p.y,vx:Math.cos(ang)*8,vy:Math.sin(ang)*8,
@@ -466,10 +480,18 @@ function dmgP(dmg){
     if(p.shp<=0){p.shield=false;document.getElementById('vshieldrow').style.display='none';}
     return;
   }
-  p.hp=Math.max(0,p.hp-dmg);p.inv=55;G.shk=5;
+  p.hp=Math.max(0,p.hp-dmg);
+  // Last Stand: survive on 1 HP once per run
+  if(p.hp<=0&&p.lastStand&&!p.lastStandUsed){
+    p.hp=1;p.lastStandUsed=true;p.inv=120;
+    flashScreen('rgba(255,200,0,.7)');
+    spPts(p.x,p.y,'#fbbf24',24,6);G.shk=10;
+    toast('LAST STAND!');return;
+  }
+  p.inv=p.ironWill?110:55;G.shk=5;
   spPts(p.x,p.y,'#e05c6a',8,3);
   flashScreen('rgba(220,60,60,.2)');
-  if(p.hp<=0){G.over=true;setTimeout(function(){showEnd();},700);}
+  if(p.hp<=0){G.over=true;stopMusic();setTimeout(function(){showEnd();},700);}
 }
 
 function dmgE(e,dmg){
@@ -488,15 +510,22 @@ function killE(e){
   var xpAmt=e.xp*(e.isBoss?3:1);
   for(var i=0;i<xpAmt;i++)G.pks.push({x:e.x+rnd(-12,12),y:e.y+rnd(-12,12),tp:'xp',val:1,col:'#6ee7f7'});
   if(Math.random()<.14)G.pks.push({x:e.x,y:e.y,tp:'hp',val:1,col:'#4ade80'});
-  if(e.isBoss){
-    // Boss always drops HP and a gold pickup
+  // Lifesteal & Vampire
+  if(G.p.lifesteal&&Math.random()<.25)G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
+  if(G.p.vampire)G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
+  if(e.isSuperBoss){
+    G.pks.push({x:e.x,y:e.y,tp:'hp',val:4,col:'#4ade80'});
+    for(var i=0;i<3;i++)G.pks.push({x:e.x+rnd(-28,28),y:e.y+rnd(-28,28),tp:'hp',val:1,col:'#4ade80'});
+    G.pks.push({x:e.x,y:e.y,tp:'gold',val:800,col:'#fbbf24'});
+    flashScreen('rgba(255,100,0,.5)');
+    toast('SUPER BOSS DEFEATED! BONUS UPGRADE!');
+    setTimeout(function(){if(!G.over&&!G.won){G.p.lv++;showUp();}},900);
+  } else if(e.isBoss){
     G.pks.push({x:e.x,y:e.y,tp:'hp',val:3,col:'#4ade80'});
     G.pks.push({x:e.x+20,y:e.y,tp:'gold',val:200,col:'#fbbf24'});
     flashScreen('rgba(255,200,0,.3)');
     toast('BOSS DEFEATED! +200 Score');
   }
-  // Lifesteal
-  if(G.p.lifesteal&&Math.random()<.25)G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
 }
 
 function bombExplode(x,y,col){
@@ -522,40 +551,39 @@ function gainXP(v){
 
 /* ── UPGRADES ───────────────────────────────────────── */
 var ALL_UPGRADES=[
-  // Common
-  {name:'+2 Damage',   ico:'+2',  desc:'Deal +2 damage per bullet.',        rar:'common',icol:'#5ba0d0',fn:function(p){p.dmg+=2;}},
-  {name:'Max HP +4',   ico:'+HP', desc:'Max HP +4. Restore 4 HP.',           rar:'common',icol:'#5ba0d0',fn:function(p){p.maxHp+=4;p.hp=Math.min(p.hp+4,p.maxHp);}},
-  {name:'Dash Boost',  ico:'>>',  desc:'Dash cooldown -35%.',                rar:'common',icol:'#5ba0d0',fn:function(p){p._dashMult=(p._dashMult||1)*0.65;}},
-  {name:'Bullet Speed',ico:'->',  desc:'Bullets travel 30% faster.',         rar:'common',icol:'#5ba0d0',fn:function(p){p._bspeed=(p._bspeed||1)*1.3;}},
-  {name:'Swiftness',   ico:'^^',  desc:'Move 20% faster.',                   rar:'common',icol:'#5ba0d0',fn:function(p){p.spd*=1.2;}},
-  {name:'XP Boost',    ico:'XP',  desc:'Gain double XP from kills.',         rar:'common',icol:'#5ba0d0',fn:function(p){p._xpMult=(p._xpMult||1)*2;}},
-  // Rare
-  {name:'Double Shot', ico:'2x',  desc:'Fire two bullets at once.',          rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ms=Math.min(p.ms+1,3);}},
-  {name:'Rapid Fire',  ico:'>>>', desc:'Fire rate 45% faster.',              rar:'rare',  icol:'#6ee7f7',fn:function(p){p.rapid=true;}},
-  {name:'Overdrive',   ico:'!!',  desc:'+2 dmg, +15% speed.',                rar:'rare',  icol:'#6ee7f7',fn:function(p){p.dmg+=2;p.spd*=1.15;}},
+  // ── COMMON ──────────────────────────────────────────
   {name:'+2 Damage',   ico:'+2',  desc:'Each bullet hits harder.',            rar:'common',icol:'#5ba0d0',fn:function(p){p.dmg+=2;},                                           statFn:function(p){return 'DMG  '+p.dmg+' \u2192 '+(p.dmg+2);}},
   {name:'Max HP +4',   ico:'+HP', desc:'More HP, restored immediately.',       rar:'common',icol:'#5ba0d0',fn:function(p){p.maxHp+=4;p.hp=Math.min(p.hp+4,p.maxHp);},           statFn:function(p){return 'Max HP  '+p.maxHp+' \u2192 '+(p.maxHp+4);}},
   {name:'Dash Boost',  ico:'>>',  desc:'Dash cooldown reduced by 35%.',        rar:'common',icol:'#5ba0d0',fn:function(p){p._dashMult=(p._dashMult||1)*0.65;},                   statFn:function(p){return 'Dash CD  -35%';}},
   {name:'Bullet Speed',ico:'->',  desc:'Bullets travel 30% faster.',           rar:'common',icol:'#5ba0d0',fn:function(p){p._bspeed=(p._bspeed||1)*1.3;},                        statFn:function(p){return 'Bullet speed  +30%';}},
   {name:'Swiftness',   ico:'^^',  desc:'Move 20% faster.',                     rar:'common',icol:'#5ba0d0',fn:function(p){p.spd*=1.2;},                                          statFn:function(p){return 'Move speed  +20%';}},
   {name:'XP Boost',    ico:'XP',  desc:'Gain double XP from all kills.',       rar:'common',icol:'#5ba0d0',fn:function(p){p._xpMult=(p._xpMult||1)*2;},                          statFn:function(p){return 'XP gain  x'+(p._xpMult||1)+' \u2192 x'+((p._xpMult||1)*2);}},
+  // ── RARE ────────────────────────────────────────────
   {name:'Double Shot', ico:'2x',  desc:'Fire an extra bullet per shot.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ms=Math.min(p.ms+1,3);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+1,3);}},
-  {name:'Rapid Fire',  ico:'>>>',  desc:'Fire rate almost doubled.',            rar:'rare',  icol:'#6ee7f7',fn:function(p){p.rapid=true;},                                         statFn:function(p){return 'Fire rate  +55%  (stacks w/ fire rate)'}},
+  {name:'Rapid Fire',  ico:'>>>',  desc:'Fire rate almost doubled.',            rar:'rare',  icol:'#6ee7f7',fn:function(p){p.rapid=true;},                                         statFn:function(p){return 'Fire rate  +55%';}},
   {name:'Overdrive',   ico:'!!',  desc:'+2 damage and +15% move speed.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.dmg+=2;p.spd*=1.15;},                                statFn:function(p){return 'DMG +'+(p.dmg+2)+'  |  Speed +15%';}},
   {name:'Lifesteal',   ico:'<3',  desc:'25% chance to heal 1 HP on kill.',     rar:'rare',  icol:'#6ee7f7',fn:function(p){p.lifesteal=true;},                                     statFn:function(p){return 'Heal chance on kill  25%';}},
   {name:'AOE Burst',   ico:'(*)',  desc:'Every 5th shot fires a full ring.',    rar:'rare',  icol:'#6ee7f7',fn:function(p){p.aoe=true;},                                           statFn:function(p){return 'Ring of 8 bullets every 5 shots';}},
   {name:'Triple Shot', ico:'3x',  desc:'Fire two extra bullets per shot.',     rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ms=Math.min(p.ms+2,4);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+2,4);}},
   {name:'Armor',       ico:'[]',  desc:'Gain a 5-hit shield layer.',            rar:'rare',  icol:'#6ee7f7',fn:function(p){p.shield=true;p.shp+=5;p.maxShp=p.shp;document.getElementById('vshieldrow').style.display='flex';},statFn:function(p){return 'Shield HP  '+(p.shp)+' \u2192 '+(p.shp+5);}},
+  {name:'Ricochet',    ico:'~',   desc:'Bullets bounce off walls once.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ricochet=true;},                                      statFn:function(p){return 'Bullets bounce once off walls';}},
+  {name:'Bloodlust',   ico:'BL',  desc:'Fire rate doubles below 35% HP.',      rar:'rare',  icol:'#6ee7f7',fn:function(p){p.bloodlust=true;},                                     statFn:function(p){return 'Fire rate x2 when HP < 35%';}},
+  {name:'Iron Will',   ico:'IW',  desc:'Invincibility frames doubled.',         rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ironWill=true;},                                      statFn:function(p){return 'Invincibility time x2 after hit';}},
+  // ── EPIC ────────────────────────────────────────────
   {name:'Pierce',      ico:'>>>', desc:'Bullets pass through every enemy.',    rar:'epic',  icol:'#00dcc0',fn:function(p){p.pierce=true;},                                        statFn:function(p){return 'Bullets pierce all targets';}},
   {name:'Explosive',   ico:'[*]', desc:'Each bullet explodes on impact.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.expl=true;},                                          statFn:function(p){return 'AoE explosion on every bullet hit';}},
   {name:'Homing',      ico:'~>',  desc:'Bullets curve to track enemies.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.homing=true;},                                        statFn:function(p){return 'Bullets auto-aim at nearest enemy';}},
   {name:'Freeze',      ico:'**',  desc:'Bullets slow all hit enemies 50%.',    rar:'epic',  icol:'#00dcc0',fn:function(p){p.freeze=true;},                                        statFn:function(p){return 'Enemies slowed 50% on bullet hit';}},
   {name:'Berserker',   ico:'!!!', desc:'+4 dmg, +25% spd. Costs 2 max HP.',   rar:'epic',  icol:'#00dcc0',fn:function(p){p.dmg+=4;p.spd*=1.25;p.maxHp=Math.max(2,p.maxHp-2);p.hp=Math.min(p.hp,p.maxHp);},statFn:function(p){return 'DMG +'+(p.dmg+4)+'  Speed +25%  MaxHP -2';}},
   {name:'Quad Shot',   ico:'4x',  desc:'Fire three extra bullets per shot.',   rar:'epic',  icol:'#00dcc0',fn:function(p){p.ms=Math.min(p.ms+3,5);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+3,5);}},
+  {name:'Vampire',     ico:'V',   desc:'Gain 1 HP on every single kill.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.vampire=true;},                                       statFn:function(p){return 'Heal +1 HP on every kill';}},
+  {name:'Chain',       ico:'CC',  desc:'Bullets arc to 1 nearby enemy.',       rar:'epic',  icol:'#00dcc0',fn:function(p){p.chain=true;},                                         statFn:function(p){return 'Bullets chain to nearest enemy';}},
+  {name:'Last Stand',  ico:'LS',  desc:'Survive a killing blow once per run.', rar:'epic',  icol:'#00dcc0',fn:function(p){p.lastStand=true;},                                     statFn:function(p){return 'Once per run: survive on 1 HP';}},
 ];
 
 
-var MAX_SLOTS=6;
+
+var MAX_SLOTS=4;
 var UP_BY_NAME={};
 function buildUpMap(){for(var i=0;i<ALL_UPGRADES.length;i++)UP_BY_NAME[ALL_UPGRADES[i].name]=ALL_UPGRADES[i];}
 function rarCol(rar){return rar==='epic'?'#00dcc0':rar==='rare'?'#6ee7f7':'#5ba0d0';}
@@ -607,27 +635,68 @@ function buildPool(){
 }
 
 function pickThree(pool){
-  var fl=G.floor,ec=clamp(0.05+fl*.015,0.05,0.38),rc=clamp(0.25+fl*.01,0.25,0.45);
-  function w(u){return u.rar==='epic'?ec:u.rar==='rare'?rc:1-ec-rc;}
-  var wt=pool.map(function(u){return{u:u,w:w(u)};});
-  wt.sort(function(){return Math.random()-.5;});
-  var ch=[];
-  for(var i=0;i<wt.length&&ch.length<3;i++)if(Math.random()<wt[i].w+0.28)ch.push(wt[i].u);
-  while(ch.length<3)ch.push(pool[ri(0,pool.length-1)]);
-  return ch.slice(0,3);
+  var fl=G.floor, lv=G.p.lv;
+
+  // Epic base chance starts at 14% (not 5%) and scales gently.
+  // Floor 1 = 14%, Floor 5 = 19%, Floor 10 = 24%, Floor 20 = 34%, cap 42%
+  var ec=clamp(0.14+fl*.010, 0.14, 0.42);
+  // Rare fills the middle band
+  var rc=clamp(0.28+fl*.008, 0.28, 0.48);
+
+  // Every 4 levels: guarantee at least one epic in the draw
+  var mustEpic=(lv%4===0);
+
+  var epics  = pool.filter(function(u){return u.rar==='epic';});
+  var rares  = pool.filter(function(u){return u.rar==='rare';});
+  var commons= pool.filter(function(u){return u.rar==='common';});
+
+  var ch=[], used={};
+
+  // Pick one item from an array, strictly avoiding already-chosen names
+  function pick(arr){
+    var avail=arr.filter(function(u){return !used[u.name];});
+    if(!avail.length)return false;
+    var u=avail[ri(0,avail.length-1)];
+    used[u.name]=true;ch.push(u);return true;
+  }
+
+  // Slot 0: guaranteed epic on milestone levels
+  if(mustEpic && epics.length>0) pick(epics);
+
+  // Fill remaining slots with weighted random
+  var tries=0;
+  while(ch.length<3 && tries++<80){
+    var r=Math.random();
+    if(r<ec           && epics.length>0  && pick(epics))  continue;
+    if(r<ec+rc        && rares.length>0  && pick(rares))  continue;
+    if(commons.length>0 && pick(commons)) continue;
+    if(pool.length>0) pick(pool);
+  }
+
+  // Fallback: grab anything not yet used
+  var rem=pool.filter(function(u){return !used[u.name];});
+  while(ch.length<3){
+    if(rem.length>0){var u=rem.splice(ri(0,rem.length-1),1)[0];used[u.name]=true;ch.push(u);}
+    else{ch.push(pool[ri(0,pool.length-1)]);break;}
+  }
+  return {cards:ch.slice(0,3), guaranteed:mustEpic};
 }
 
 function showUp(){
   PAU=true;buildUpMap();
-  var chosen=pickThree(buildPool());
+  var result=pickThree(buildPool());
+  var chosen=result.cards;
+  var guaranteed=result.guaranteed;
   var full=G.p.ups.length>=MAX_SLOTS;
   var cont=document.getElementById('vupc');cont.innerHTML='';
   renderLoadout();
   if(full){
-    document.getElementById('vupsub').innerHTML='SLOTS FULL &mdash; Equip new, drop old';
-    chosen.forEach(function(u){cont.appendChild(makeUpCard(u,function(){showSwapSlots(u);},'SELECT → DROP ONE',rarCol(u.rar)));});
+    document.getElementById('vupsub').innerHTML='SLOTS FULL &mdash; Equip new, drop old'
+      +(guaranteed?' <span style="color:#00dcc0;letter-spacing:.15em">&nbsp;&#9670; EPIC GUARANTEED</span>':'');
+    chosen.forEach(function(u){cont.appendChild(makeUpCard(u,function(){showSwapSlots(u);},'SELECT \u2192 DROP ONE',rarCol(u.rar)));});
   } else {
-    document.getElementById('vupsub').innerHTML='Level '+G.p.lv+' &mdash; '+G.p.ups.length+'/'+MAX_SLOTS+' slots used';
+    document.getElementById('vupsub').innerHTML='Level '+G.p.lv+' &mdash; '+G.p.ups.length+'/'+MAX_SLOTS+' slots'
+      +(guaranteed?' <span style="color:#00dcc0;letter-spacing:.15em">&nbsp;&#9670; EPIC GUARANTEED</span>':'');
     chosen.forEach(function(u){
       cont.appendChild(makeUpCard(u,function(){u.fn(G.p);G.p.ups.push(u.name);PAU=false;showScr('game');},'SELECT',rarCol(u.rar)));
     });
@@ -642,13 +711,17 @@ function showUp(){
 
 function showSwapSlots(newUpgrade){
   buildUpMap();
+  var swapDone=false; // guard against double-click
   var cont=document.getElementById('vupc');cont.innerHTML='';
   document.getElementById('vupsub').innerHTML='Equipping <span style="color:'+rarCol(newUpgrade.rar)+'">'+newUpgrade.name+'</span> &mdash; Drop which?';
-  G.p.ups.forEach(function(upName,idx){
+  var snapUps=G.p.ups.slice(); // snapshot — prevents index drift
+  snapUps.forEach(function(upName,idx){
     var u=UP_BY_NAME[upName]||{name:upName,ico:'?',desc:'Current upgrade.',rar:'common',icol:'#5ba0d0',statFn:function(){return '';}};
     cont.appendChild(makeUpCard(u,function(){
-      newUpgrade.fn(G.p);G.p.ups.splice(idx,1,newUpgrade.name);
-      PAU=false;showScr('game');
+      if(swapDone)return; swapDone=true; // only fire once
+      newUpgrade.fn(G.p);
+      G.p.ups.splice(idx,1,newUpgrade.name);
+      updHUD();PAU=false;showScr('game');
       toast('Dropped: '+u.name+'  /  Equipped: '+newUpgrade.name);
     },'DROP THIS','#e05c6a'));
   });
@@ -679,10 +752,18 @@ function showEnd(){
 /* ── HUD ────────────────────────────────────────────── */
 function updHUD(){
   var p=G.p,b=getBiome(G.floor);
-  document.getElementById('vhp').style.width=(p.hp/p.maxHp*100)+'%';
+  var hpPct=p.hp/p.maxHp;
+  var hpCol=hpPct>0.5?'#00dcc0':hpPct>0.25?'#f0a500':'#e05c6a';
+  var hpGlow=hpPct>0.5?'rgba(0,220,180,.5)':hpPct>0.25?'rgba(240,165,0,.5)':'rgba(224,92,106,.6)';
+  var hpEl=document.getElementById('vhp');
+  hpEl.style.width=(hpPct*100)+'%';
+  hpEl.style.background=hpCol;
+  hpEl.style.boxShadow='0 0 10px '+hpGlow;
+  hpEl.className=hpPct<=0.25?'vhf lopHp':'vhf';
   document.getElementById('vhpn').textContent=p.hp+'/'+p.maxHp;
+  document.getElementById('vhpn').style.color=hpCol;
   document.getElementById('vsc').textContent=G.score;
-  var bossTag=G.floor%5===0?' [BOSS]':'';
+  var bossTag=G.floor%10===0?' [SUPER BOSS]':G.floor%5===0?' [BOSS]':'';
   document.getElementById('vfl').textContent=b.name+' F'+G.floor+bossTag;
   document.getElementById('vxp').style.width=(p.xp/p.xpN*100)+'%';
   document.getElementById('vlv').textContent=p.lv;
@@ -786,6 +867,16 @@ function update(){
       for(var i=0;i<G.ens.length;i++){if(!G.ens[i].dead){var d=dst(b,G.ens[i]);if(d<nd){nd=d;ne=G.ens[i];}}}
       if(ne){var dd=nm({x:ne.x-b.x,y:ne.y-b.y});b.vx=lerp(b.vx,dd.x*8,.1);b.vy=lerp(b.vy,dd.y*8,.1);}
     }
+    // Ricochet: bounce off walls once before dying
+    if(p.ricochet&&!b.bounced&&b.life>0&&solid(Math.floor(b.x/TILE),Math.floor(b.y/TILE))){
+      b.x-=b.vx*bspeed;b.y-=b.vy*bspeed; // step back
+      var hitX=solid(Math.floor((b.x+b.vx*bspeed)/TILE),Math.floor(b.y/TILE));
+      var hitY=solid(Math.floor(b.x/TILE),Math.floor((b.y+b.vy*bspeed)/TILE));
+      if(hitX)b.vx=-b.vx; if(hitY)b.vy=-b.vy;
+      if(!hitX&&!hitY){b.vx=-b.vx;b.vy=-b.vy;}
+      b.x+=b.vx*bspeed;b.y+=b.vy*bspeed;
+      b.bounced=true;b.life=Math.min(b.life,28);
+    }
     if(b.life<=0||solid(Math.floor(b.x/TILE),Math.floor(b.y/TILE))){if(b.expl)explode(b.x,b.y);continue;}
     var hit=false;
     for(var ei=G.ens.length-1;ei>=0;ei--){
@@ -793,6 +884,12 @@ function update(){
       if(!e.dead&&dst(b,e)<e.sz+4){
         if(b.freeze&&!e.frozen){e.frozen=true;e._frozenTimer=60;e._spdOrig=e.spd;e.spd*=0.5;}
         dmgE(e,b.dmg);
+        // Chain: arc to nearest other enemy
+        if(p.chain&&!b.chained){
+          var ct=null,cd=9999;
+          for(var ci=0;ci<G.ens.length;ci++){if(!G.ens[ci].dead&&G.ens[ci]!==e&&dst(b,G.ens[ci])<170){var d2=dst(b,G.ens[ci]);if(d2<cd){cd=d2;ct=G.ens[ci];}}}
+          if(ct){var cn=nm({x:ct.x-b.x,y:ct.y-b.y});p.buls.push({x:b.x,y:b.y,vx:cn.x*9,vy:cn.y*9,dmg:b.dmg,life:28,pierce:false,expl:false,homing:false,freeze:b.freeze,chained:true});}
+        }
         if(!b.pierce){if(b.expl)explode(b.x,b.y);hit=true;break;}
       }
     }
@@ -847,6 +944,11 @@ function update(){
       }
     }
 
+    // Super boss enrage at 50% HP
+    if(e.isSuperBoss&&!e.enraged&&e.hp<e.maxHp*0.5){
+      e.enraged=true;e.spd*=1.8;e.sr=10;e.dmg=4;e.col='#ff2200';
+      toast('SUPER BOSS ENRAGED!');flashScreen('rgba(255,0,0,.45)');G.shk=12;
+    }
     if(ed<11+e.sz&&p.inv===0)dmgP(e.dmg);
     // Ranged — only shoot with LoS
     var canShoot=hasLoS(e.x,e.y,p.x,p.y);
@@ -854,7 +956,7 @@ function update(){
       e.scd--;
       if(e.scd<=0&&ed<340&&ed>0){
         e.scd=e.sr+ri(0,25);
-        var shots=e.isBoss?3:1;
+        var shots=e.isSuperBoss?(e.enraged?7:5):e.isBoss?3:1;
         for(var si=0;si<shots;si++){
           var ang3=Math.atan2(ey2,ex2)+(si-(shots-1)/2)*.3;
           var spd2=e.isBoss?5:3.5;
@@ -896,10 +998,9 @@ function update(){
   }
   G.pks=newPks;
 
-  // Camera
-  var tx=p.x-cv.width/2,ty=p.y-cv.height/2;
-  G.cam.x=lerp(G.cam.x,tx,.1);G.cam.y=lerp(G.cam.y,ty,.1);
-  if(G.shk>0){G.cam.x+=rnd(-G.shk,G.shk);G.cam.y+=rnd(-G.shk,G.shk);G.shk=Math.max(0,G.shk-.6);}
+  // Camera — smoothly follow player; shake is applied in render
+  G.cam.x=lerp(G.cam.x,p.x,.1);G.cam.y=lerp(G.cam.y,p.y,.1);
+  if(G.shk>0)G.shk=Math.max(0,G.shk-.6);
   updHUD();
 }
 
@@ -923,7 +1024,13 @@ function render(){
   var bm=getBiome(G.floor);
   c2.clearRect(0,0,cv.width,cv.height);
   c2.fillStyle='#0a0e14';c2.fillRect(0,0,cv.width,cv.height);
-  c2.save();c2.translate(-G.cam.x,-G.cam.y);
+  // Zoomed camera centered on player, shake at screen level
+  var sx=G.shk>0?rnd(-G.shk,G.shk):0;
+  var sy=G.shk>0?rnd(-G.shk,G.shk):0;
+  c2.save();
+  c2.translate(cv.width/2+sx, cv.height/2+sy);
+  c2.scale(ZOOM,ZOOM);
+  c2.translate(-G.cam.x,-G.cam.y);
 
   // Tiles
   for(var ty=0;ty<ROWS;ty++){
@@ -1002,7 +1109,14 @@ function render(){
     if(e.frozen)alpha*=0.7;
     c2.globalAlpha=alpha;
     // Boss glow ring
-    if(e.isBoss){
+    if(e.isSuperBoss){
+      var sp2=.4+.4*Math.sin(G.frm*.1);
+      var sbCol=e.enraged?'rgba(255,34,0,':'rgba(255,102,0,';
+      c2.strokeStyle=sbCol+(0.6+0.3*sp2)+')';c2.lineWidth=3;
+      c2.beginPath();c2.arc(e.x,e.y,e.sz+8,0,Math.PI*2);c2.stroke();
+      c2.strokeStyle=sbCol+(0.25+0.2*sp2)+')';c2.lineWidth=2;
+      c2.beginPath();c2.arc(e.x,e.y,e.sz+16,0,Math.PI*2);c2.stroke();
+    } else if(e.isBoss){
       var bp=.4+.4*Math.sin(G.frm*.08);
       c2.strokeStyle='rgba(251,191,36,'+bp+')';c2.lineWidth=3;
       c2.beginPath();c2.arc(e.x,e.y,e.sz+6,0,Math.PI*2);c2.stroke();
@@ -1109,8 +1223,17 @@ function startMusic(){
   if(AC.state==='suspended')AC.resume();
   if(musNext<AC.currentTime)musNext=AC.currentTime+0.05;
   if(musTimer)clearInterval(musTimer);
+  if(MG)MG.gain.cancelScheduledValues(AC.currentTime);
+  MG.gain.value=musicOn?0.28:0;
   musTimer=setInterval(mTick,22);
-  MG.gain.value=0.28;
+}
+function stopMusic(){
+  if(musTimer){clearInterval(musTimer);musTimer=null;}
+  if(MG){
+    // Fade out over ~400ms instead of cutting abruptly
+    var now=AC?AC.currentTime:0;
+    MG.gain.setTargetAtTime(0, now, 0.15);
+  }
 }
 function toggleMusic(){
   musicOn=!musicOn;
