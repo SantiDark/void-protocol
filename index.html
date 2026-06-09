@@ -57,7 +57,7 @@ html,body{width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:
 .vupd{font-size:11px;color:rgba(200,230,255,.45);line-height:1.7;margin-bottom:10px;min-height:34px}
 .vupstat{font-size:10px;color:rgba(200,230,255,.8);background:rgba(255,255,255,.06);padding:7px 10px;border-radius:3px;letter-spacing:.04em;border-left:3px solid #444;font-family:monospace}
 .vupsel{margin-top:12px;font-size:9px;letter-spacing:.2em;text-transform:uppercase;text-align:center;padding:8px;border-radius:2px;font-weight:700;transition:background .15s}
-.rc{color:#5ba0d0}.rr{color:#6ee7f7}.re{color:#00dcc0}
+.rc{color:#5ba0d0}.ru{color:#4ade80}.re{color:#a78bfa}.rl{color:#ffd700}
 #vend{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,14,20,.98);z-index:20}
 .vet{font-size:56px;font-weight:900;letter-spacing:-3px;margin-bottom:6px;font-family:Georgia,serif}
 .vet.dead{color:#e05c6a}
@@ -90,6 +90,29 @@ html,body{width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:
 .vhisdet{color:rgba(200,230,255,.32);font-size:9px;flex:1}
 .vhisdate{color:rgba(200,230,255,.18);font-size:8px;flex-shrink:0}
 .vhisnew{color:#00dcc0;font-size:8px;letter-spacing:.1em;font-weight:700;flex-shrink:0}
+
+/* Legendary card glow */
+.vupcrd.leg { box-shadow: 0 0 20px rgba(255,215,0,.12), inset 0 0 30px rgba(255,215,0,.03); }
+.vupcrd.leg:hover { box-shadow: 0 0 32px rgba(255,215,0,.25); }
+/* XP bottom bar */
+#vxpbar{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,.04);z-index:6;pointer-events:none;display:none}
+#vxpfill{height:100%;background:linear-gradient(to right,#4ade80,#a78bfa,#ffd700);border-radius:0 2px 2px 0;transition:width .4s cubic-bezier(.25,1,.5,1)}
+/* Name input */
+.vnamewrap{display:flex;gap:8px;justify-content:center;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+#vpname{background:rgba(255,255,255,.05);border:1px solid rgba(0,220,180,.35);color:#ddeeff;padding:9px 14px;font-family:'Courier New',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;border-radius:2px;width:150px;outline:none;transition:border-color .2s}
+#vpname:focus{border-color:#00dcc0}
+/* Global leaderboard */
+#vglb{max-width:520px;width:100%;margin:0 auto 20px}
+.vglb-title{font-size:9px;letter-spacing:.3em;color:rgba(200,230,255,.22);text-transform:uppercase;text-align:center;margin-bottom:10px;display:flex;align-items:center;gap:10px;justify-content:center}
+.vglb-title::before,.vglb-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+.vglb-row{display:flex;align-items:center;gap:8px;padding:7px 12px;margin-bottom:4px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:2px;font-size:10px}
+.vglb-row.isyou{border-color:rgba(0,220,180,.45);background:rgba(0,220,180,.07)}
+.vglb-row.isgold{border-color:rgba(255,215,0,.4);background:rgba(255,215,0,.05)}
+.vglb-rk{color:rgba(0,220,180,.55);font-weight:900;width:22px;font-size:11px;flex-shrink:0}
+.vglb-name{color:#ddeeff;font-weight:700;min-width:80px;font-family:monospace;letter-spacing:.05em}
+.vglb-score{color:#00dcc0;font-weight:700;min-width:70px}
+.vglb-det{color:rgba(200,230,255,.32);font-size:9px;flex:1}
+.vglb-date{color:rgba(200,230,255,.18);font-size:8px;flex-shrink:0}
 canvas#vc{position:absolute;inset:0;width:100%;height:100%}
 </style>
 </head>
@@ -154,6 +177,14 @@ canvas#vc{position:absolute;inset:0;width:100%;height:100%}
     <div id="vnewrec" style="display:none;font-size:11px;letter-spacing:.25em;color:#00dcc0;text-transform:uppercase;margin-bottom:12px;animation:vta 3s forwards">NEW PERSONAL BEST!</div>
     <div class="vestat" id="vestat2"></div>
     <div class="vhiscores" id="vend-scores" style="margin-bottom:20px"></div>
+    <div id="vglb"></div>
+    <div id="vsubrow" style="display:none;margin-bottom:18px;text-align:center">
+      <div style="font-size:9px;letter-spacing:.2em;color:rgba(0,220,180,.55);text-transform:uppercase;margin-bottom:10px">Submit to Global Leaderboard</div>
+      <div class="vnamewrap">
+        <input id="vpname" type="text" maxlength="10" placeholder="YOUR NAME">
+        <button class="vbtn" id="vsubmitbtn" style="padding:9px 20px;font-size:11px">Submit</button>
+      </div>
+    </div>
     <div class="vebtns">
       <button class="vbtn" id="vret">Try Again</button>
       <button class="vbtn sec" id="vmenu">Main Menu</button>
@@ -170,6 +201,7 @@ canvas#vc{position:absolute;inset:0;width:100%;height:100%}
     </div>
   </div>
 
+  <div id="vxpbar"><div id="vxpfill" style="width:0%"></div></div>
   <button id="vpausebtn">II  Pause</button>
   <button id="vmusbtn">&#9834;  Music</button>
   <button id="vfsbtn">[ ] Fullscreen</button>
@@ -279,18 +311,30 @@ function genFloor(floor){
 function makeEnemy(room,floor){
   var scale=1+floor*0.12;
   var types=[
-    {tp:'grunt',   hp:Math.round((2+floor)*scale),   spd:clamp(.9+floor*.07,0.9,3.5),  dmg:1,sz:7, col:'#e05c6a',sr:0,  xp:1,sc:10},
-    {tp:'runner',  hp:1,                              spd:clamp(1.6+floor*.09,1.6,5),   dmg:1,sz:6, col:'#f4a261',sr:0,  xp:1,sc:15},
-    {tp:'shooter', hp:Math.round((2+floor)*scale),    spd:clamp(0.6+floor*.04,0.6,2),   dmg:1,sz:8, col:'#a78bfa',sr:65, xp:2,sc:20},
-    {tp:'tank',    hp:Math.round((4+floor*2)*scale),  spd:clamp(.45+floor*.03,0.45,1.8),dmg:2,sz:10,col:'#60a5fa',sr:0,  xp:3,sc:30},
-    {tp:'sniper',  hp:Math.round((1+floor)*scale),    spd:clamp(0.5+floor*.03,0.5,1.5), dmg:2,sz:7, col:'#f472b6',sr:90, xp:2,sc:25},
-    {tp:'bomber',  hp:Math.round((3+floor)*scale),    spd:clamp(1.2+floor*.06,1.2,3),   dmg:1,sz:8, col:'#fb923c',sr:0,  xp:2,sc:20,explodes:true},
-    {tp:'ghost',   hp:Math.round((2+floor)*scale),    spd:clamp(1.4+floor*.08,1.4,4),   dmg:1,sz:7, col:'#67e8f9',sr:0,  xp:2,sc:22,ghost:true},
-    {tp:'elite',   hp:Math.round((8+floor*3)*scale),  spd:clamp(.8+floor*.06,0.8,2.5),  dmg:2,sz:12,col:'#fbbf24',sr:45, xp:5,sc:60},
+    // Always available (floor 1+)
+    {tp:'grunt',    hp:Math.round((2+floor)*scale),   spd:clamp(.9+floor*.07,0.9,3.5),  dmg:1,sz:7, col:'#e05c6a',sr:0,  xp:1,sc:10},
+    {tp:'runner',   hp:1,                              spd:clamp(1.6+floor*.09,1.6,5),   dmg:1,sz:6, col:'#f4a261',sr:0,  xp:1,sc:15},
+    {tp:'shooter',  hp:Math.round((2+floor)*scale),   spd:clamp(0.6+floor*.04,0.6,2),   dmg:1,sz:8, col:'#a78bfa',sr:65, xp:2,sc:20},
+    {tp:'tank',     hp:Math.round((4+floor*2)*scale), spd:clamp(.45+floor*.03,0.45,1.8),dmg:2,sz:10,col:'#60a5fa',sr:0,  xp:3,sc:30},
+    // Unlocks floor 2+
+    {tp:'leech',    hp:Math.round((3+floor)*scale),   spd:clamp(.7+floor*.05,0.7,2.2),  dmg:1,sz:8, col:'#34d399',sr:0,  xp:2,sc:18,leech:true},
+    // Unlocks floor 4+
+    {tp:'sniper',   hp:Math.round((1+floor)*scale),   spd:clamp(0.5+floor*.03,0.5,1.5), dmg:2,sz:7, col:'#f472b6',sr:90, xp:2,sc:25},
+    // Unlocks floor 6+
+    {tp:'dasher',   hp:Math.round((2+floor)*scale),   spd:clamp(.8+floor*.04,0.8,2.5),  dmg:2,sz:7, col:'#ff4d4d',sr:0,  xp:2,sc:22,dasher:true},
+    // Unlocks floor 8+
+    {tp:'bomber',   hp:Math.round((3+floor)*scale),   spd:clamp(1.2+floor*.06,1.2,3),   dmg:1,sz:8, col:'#fb923c',sr:0,  xp:2,sc:20,explodes:true},
+    // Unlocks floor 10+
+    {tp:'splitter', hp:Math.round((4+floor)*scale),   spd:clamp(.9+floor*.05,0.9,2.5),  dmg:1,sz:9, col:'#e879f9',sr:0,  xp:2,sc:25,splitter:true},
+    // Unlocks floor 12+
+    {tp:'ghost',    hp:Math.round((2+floor)*scale),   spd:clamp(1.4+floor*.08,1.4,4),   dmg:1,sz:7, col:'#67e8f9',sr:0,  xp:2,sc:22,ghost:true},
+    // Unlocks floor 14+
+    {tp:'turret',   hp:Math.round((6+floor*2)*scale), spd:0,                             dmg:1,sz:10,col:'#94a3b8',sr:22, xp:3,sc:28,turret:true},
+    // Unlocks floor 16+
+    {tp:'elite',    hp:Math.round((8+floor*3)*scale), spd:clamp(.8+floor*.06,0.8,2.5),  dmg:2,sz:12,col:'#fbbf24',sr:45, xp:5,sc:60},
   ];
-  // Weight by floor — harder enemies unlock as floors increase
   var avail=Math.min(types.length, 4+Math.floor(floor/2));
-  var base=[.30,.22,.18,.12,.07,.06,.03,.02];
+  var base=[.27,.20,.15,.11,.08,.06,.04,.03,.02,.02,.01,.01];
   var wts=base.slice(0,avail);
   var sum=wts.reduce(function(a,b){return a+b;},0);
   wts=wts.map(function(w){return w/sum;});
@@ -301,7 +345,8 @@ function makeEnemy(room,floor){
   var ey=clamp((room.y+ri(1,room.h-2))*TILE+TILE/2,TILE,(ROWS-2)*TILE);
   return{x:ex,y:ey,tp:t.tp,hp:t.hp,maxHp:t.hp,spd:t.spd,dmg:t.dmg,sz:t.sz,col:t.col,
     sr:t.sr||0,xp:t.xp,sc:t.sc,scd:ri(0,t.sr||1),fl:0,dead:false,
-    explodes:!!t.explodes,ghost:!!t.ghost,phaseTimer:0};
+    explodes:!!t.explodes,ghost:!!t.ghost,phaseTimer:0,
+    leech:!!t.leech,dasher:!!t.dasher,splitter:!!t.splitter,turret:!!t.turret};
 }
 
 /* ── ELITE BOSS every 5 floors ─────────────────────── */
@@ -491,6 +536,8 @@ function dmgP(dmg){
   p.inv=p.ironWill?110:55;G.shk=5;
   spPts(p.x,p.y,'#e05c6a',8,3);
   flashScreen('rgba(220,60,60,.2)');
+  // Death Nova: AoE burst every time player is hit
+  if(p.deathNova){explode(p.x,p.y);spPts(p.x,p.y,'#ffd700',16,5);}
   if(p.hp<=0){G.over=true;stopMusic();setTimeout(function(){showEnd();},700);}
 }
 
@@ -506,13 +553,25 @@ function killE(e){
   spPts(e.x,e.y,e.col,e.isBoss?30:14,e.isBoss?6:3.5);
   G.shk=e.isBoss?8:2;
   if(e.explodes)bombExplode(e.x,e.y,e.col);
+  // Splitter: splits into 2 fast mini-enemies on death
+  if(e.splitter&&!e.hasSplit){
+    for(var si=0;si<2;si++){
+      G.ens.push({x:e.x+rnd(-12,12),y:e.y+rnd(-12,12),tp:'splitter_mini',
+        hp:1,maxHp:1,spd:2.4,dmg:1,sz:4,col:'#e879f9',sr:0,xp:1,sc:8,
+        scd:0,fl:0,dead:false,explodes:false,ghost:false,phaseTimer:0,
+        leech:false,dasher:false,splitter:false,turret:false,hasSplit:true,
+        _activated:true,_wp:null,_pathTimer:999});
+    }
+    spPts(e.x,e.y,'#e879f9',12,4);
+  }
   // XP drops
   var xpAmt=e.xp*(e.isBoss?3:1);
   for(var i=0;i<xpAmt;i++)G.pks.push({x:e.x+rnd(-12,12),y:e.y+rnd(-12,12),tp:'xp',val:1,col:'#6ee7f7'});
   if(Math.random()<.14)G.pks.push({x:e.x,y:e.y,tp:'hp',val:1,col:'#4ade80'});
-  // Lifesteal & Vampire
+  // Lifesteal & Vampire & Void Heart
   if(G.p.lifesteal&&Math.random()<.25)G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
   if(G.p.vampire)G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
+  if(G.p.voidHeart)G.p.hp=Math.min(G.p.maxHp,G.p.hp+3);
   if(e.isSuperBoss){
     G.pks.push({x:e.x,y:e.y,tp:'hp',val:4,col:'#4ade80'});
     for(var i=0;i<3;i++)G.pks.push({x:e.x+rnd(-28,28),y:e.y+rnd(-28,28),tp:'hp',val:1,col:'#4ade80'});
@@ -559,26 +618,30 @@ var ALL_UPGRADES=[
   {name:'Swiftness',   ico:'^^',  desc:'Move 20% faster.',                     rar:'common',icol:'#5ba0d0',fn:function(p){p.spd*=1.2;},                                          statFn:function(p){return 'Move speed  +20%';}},
   {name:'XP Boost',    ico:'XP',  desc:'Gain double XP from all kills.',       rar:'common',icol:'#5ba0d0',fn:function(p){p._xpMult=(p._xpMult||1)*2;},                          statFn:function(p){return 'XP gain  x'+(p._xpMult||1)+' \u2192 x'+((p._xpMult||1)*2);}},
   // ── RARE ────────────────────────────────────────────
-  {name:'Double Shot', ico:'2x',  desc:'Fire an extra bullet per shot.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ms=Math.min(p.ms+1,3);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+1,3);}},
-  {name:'Rapid Fire',  ico:'>>>',  desc:'Fire rate almost doubled.',            rar:'rare',  icol:'#6ee7f7',fn:function(p){p.rapid=true;},                                         statFn:function(p){return 'Fire rate  +55%';}},
-  {name:'Overdrive',   ico:'!!',  desc:'+2 damage and +15% move speed.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.dmg+=2;p.spd*=1.15;},                                statFn:function(p){return 'DMG +'+(p.dmg+2)+'  |  Speed +15%';}},
-  {name:'Lifesteal',   ico:'<3',  desc:'25% chance to heal 1 HP on kill.',     rar:'rare',  icol:'#6ee7f7',fn:function(p){p.lifesteal=true;},                                     statFn:function(p){return 'Heal chance on kill  25%';}},
-  {name:'AOE Burst',   ico:'(*)',  desc:'Every 5th shot fires a full ring.',    rar:'rare',  icol:'#6ee7f7',fn:function(p){p.aoe=true;},                                           statFn:function(p){return 'Ring of 8 bullets every 5 shots';}},
-  {name:'Triple Shot', ico:'3x',  desc:'Fire two extra bullets per shot.',     rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ms=Math.min(p.ms+2,4);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+2,4);}},
-  {name:'Armor',       ico:'[]',  desc:'Gain a 5-hit shield layer.',            rar:'rare',  icol:'#6ee7f7',fn:function(p){p.shield=true;p.shp+=5;p.maxShp=p.shp;document.getElementById('vshieldrow').style.display='flex';},statFn:function(p){return 'Shield HP  '+(p.shp)+' \u2192 '+(p.shp+5);}},
-  {name:'Ricochet',    ico:'~',   desc:'Bullets bounce off walls once.',       rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ricochet=true;},                                      statFn:function(p){return 'Bullets bounce once off walls';}},
-  {name:'Bloodlust',   ico:'BL',  desc:'Fire rate doubles below 35% HP.',      rar:'rare',  icol:'#6ee7f7',fn:function(p){p.bloodlust=true;},                                     statFn:function(p){return 'Fire rate x2 when HP < 35%';}},
-  {name:'Iron Will',   ico:'IW',  desc:'Invincibility frames doubled.',         rar:'rare',  icol:'#6ee7f7',fn:function(p){p.ironWill=true;},                                      statFn:function(p){return 'Invincibility time x2 after hit';}},
+  {name:'Double Shot', ico:'2x',  desc:'Fire an extra bullet per shot.',       rar:'uncommon',  icol:'#4ade80',fn:function(p){p.ms=Math.min(p.ms+1,3);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+1,3);}},
+  {name:'Rapid Fire',  ico:'>>>',  desc:'Fire rate almost doubled.',            rar:'uncommon',  icol:'#4ade80',fn:function(p){p.rapid=true;},                                         statFn:function(p){return 'Fire rate  +55%';}},
+  {name:'Overdrive',   ico:'!!',  desc:'+2 damage and +15% move speed.',       rar:'uncommon',  icol:'#4ade80',fn:function(p){p.dmg+=2;p.spd*=1.15;},                                statFn:function(p){return 'DMG +'+(p.dmg+2)+'  |  Speed +15%';}},
+  {name:'Lifesteal',   ico:'<3',  desc:'25% chance to heal 1 HP on kill.',     rar:'uncommon',  icol:'#4ade80',fn:function(p){p.lifesteal=true;},                                     statFn:function(p){return 'Heal chance on kill  25%';}},
+  {name:'AOE Burst',   ico:'(*)',  desc:'Every 5th shot fires a full ring.',    rar:'uncommon',  icol:'#4ade80',fn:function(p){p.aoe=true;},                                           statFn:function(p){return 'Ring of 8 bullets every 5 shots';}},
+  {name:'Triple Shot', ico:'3x',  desc:'Fire two extra bullets per shot.',     rar:'uncommon',  icol:'#4ade80',fn:function(p){p.ms=Math.min(p.ms+2,4);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+2,4);}},
+  {name:'Armor',       ico:'[]',  desc:'Gain a 5-hit shield layer.',            rar:'uncommon',  icol:'#4ade80',fn:function(p){p.shield=true;p.shp+=5;p.maxShp=p.shp;document.getElementById('vshieldrow').style.display='flex';},statFn:function(p){return 'Shield HP  '+(p.shp)+' \u2192 '+(p.shp+5);}},
+  {name:'Ricochet',    ico:'~',   desc:'Bullets bounce off walls once.',       rar:'uncommon',  icol:'#4ade80',fn:function(p){p.ricochet=true;},                                      statFn:function(p){return 'Bullets bounce once off walls';}},
+  {name:'Bloodlust',   ico:'BL',  desc:'Fire rate doubles below 35% HP.',      rar:'uncommon',  icol:'#4ade80',fn:function(p){p.bloodlust=true;},                                     statFn:function(p){return 'Fire rate x2 when HP < 35%';}},
+  {name:'Iron Will',   ico:'IW',  desc:'Invincibility frames doubled.',         rar:'uncommon',  icol:'#4ade80',fn:function(p){p.ironWill=true;},                                      statFn:function(p){return 'Invincibility time x2 after hit';}},
   // ── EPIC ────────────────────────────────────────────
-  {name:'Pierce',      ico:'>>>', desc:'Bullets pass through every enemy.',    rar:'epic',  icol:'#00dcc0',fn:function(p){p.pierce=true;},                                        statFn:function(p){return 'Bullets pierce all targets';}},
-  {name:'Explosive',   ico:'[*]', desc:'Each bullet explodes on impact.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.expl=true;},                                          statFn:function(p){return 'AoE explosion on every bullet hit';}},
-  {name:'Homing',      ico:'~>',  desc:'Bullets curve to track enemies.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.homing=true;},                                        statFn:function(p){return 'Bullets auto-aim at nearest enemy';}},
-  {name:'Freeze',      ico:'**',  desc:'Bullets slow all hit enemies 50%.',    rar:'epic',  icol:'#00dcc0',fn:function(p){p.freeze=true;},                                        statFn:function(p){return 'Enemies slowed 50% on bullet hit';}},
-  {name:'Berserker',   ico:'!!!', desc:'+4 dmg, +25% spd. Costs 2 max HP.',   rar:'epic',  icol:'#00dcc0',fn:function(p){p.dmg+=4;p.spd*=1.25;p.maxHp=Math.max(2,p.maxHp-2);p.hp=Math.min(p.hp,p.maxHp);},statFn:function(p){return 'DMG +'+(p.dmg+4)+'  Speed +25%  MaxHP -2';}},
-  {name:'Quad Shot',   ico:'4x',  desc:'Fire three extra bullets per shot.',   rar:'epic',  icol:'#00dcc0',fn:function(p){p.ms=Math.min(p.ms+3,5);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+3,5);}},
-  {name:'Vampire',     ico:'V',   desc:'Gain 1 HP on every single kill.',      rar:'epic',  icol:'#00dcc0',fn:function(p){p.vampire=true;},                                       statFn:function(p){return 'Heal +1 HP on every kill';}},
-  {name:'Chain',       ico:'CC',  desc:'Bullets arc to 1 nearby enemy.',       rar:'epic',  icol:'#00dcc0',fn:function(p){p.chain=true;},                                         statFn:function(p){return 'Bullets chain to nearest enemy';}},
-  {name:'Last Stand',  ico:'LS',  desc:'Survive a killing blow once per run.', rar:'epic',  icol:'#00dcc0',fn:function(p){p.lastStand=true;},                                     statFn:function(p){return 'Once per run: survive on 1 HP';}},
+  {name:'Pierce',      ico:'>>>', desc:'Bullets pass through every enemy.',    rar:'epic',  icol:'#a78bfa',fn:function(p){p.pierce=true;},                                        statFn:function(p){return 'Bullets pierce all targets';}},
+  {name:'Explosive',   ico:'[*]', desc:'Each bullet explodes on impact.',      rar:'legendary',icol:'#ffd700',fn:function(p){p.expl=true;},                                          statFn:function(p){return 'AoE explosion on every bullet hit';}},
+  {name:'Homing',      ico:'~>',  desc:'Bullets curve to track enemies.',      rar:'epic',  icol:'#a78bfa',fn:function(p){p.homing=true;},                                        statFn:function(p){return 'Bullets auto-aim at nearest enemy';}},
+  {name:'Freeze',      ico:'**',  desc:'Bullets slow all hit enemies 50%.',    rar:'epic',  icol:'#a78bfa',fn:function(p){p.freeze=true;},                                        statFn:function(p){return 'Enemies slowed 50% on bullet hit';}},
+  {name:'Berserker',   ico:'!!!', desc:'+4 dmg, +25% spd. Costs 2 max HP.',   rar:'epic',  icol:'#a78bfa',fn:function(p){p.dmg+=4;p.spd*=1.25;p.maxHp=Math.max(2,p.maxHp-2);p.hp=Math.min(p.hp,p.maxHp);},statFn:function(p){return 'DMG +'+(p.dmg+4)+'  Speed +25%  MaxHP -2';}},
+  {name:'Quad Shot',   ico:'4x',  desc:'Fire three extra bullets per shot.',   rar:'epic',  icol:'#a78bfa',fn:function(p){p.ms=Math.min(p.ms+3,5);},                             statFn:function(p){return 'Bullets/shot  '+p.ms+' \u2192 '+Math.min(p.ms+3,5);}},
+  {name:'Vampire',     ico:'V',   desc:'Gain 1 HP on every single kill.',      rar:'legendary',icol:'#ffd700',fn:function(p){p.vampire=true;},                                    statFn:function(p){return 'Heal +1 HP on every kill';}},
+  {name:'Chain',       ico:'CC',  desc:'Bullets arc to 1 nearby enemy.',       rar:'epic',  icol:'#a78bfa',fn:function(p){p.chain=true;},                                         statFn:function(p){return 'Bullets chain to nearest enemy';}},
+  {name:'Last Stand',  ico:'LS',  desc:'Survive a killing blow once per run.', rar:'epic',  icol:'#a78bfa',fn:function(p){p.lastStand=true;},                                     statFn:function(p){return 'Once per run: survive on 1 HP';}},
+  // ── LEGENDARY ───────────────────────────────────────
+  {name:'Void Heart',  ico:'VH',  desc:'Max HP +10. Heal +3 on every kill.',   rar:'legendary',icol:'#ffd700',fn:function(p){p.maxHp+=10;p.hp=Math.min(p.hp+10,p.maxHp);p.voidHeart=true;},   statFn:function(p){return 'Max HP \u2192 '+(p.maxHp+10)+'  +3 HP per kill';}},
+  {name:'Singularity', ico:'SG',  desc:'Bullets gain Pierce + Homing + Freeze.',rar:'legendary',icol:'#ffd700',fn:function(p){p.pierce=true;p.homing=true;p.freeze=true;},                     statFn:function(p){return 'Pierce + Homing + Freeze active';}},
+  {name:'Death Nova',  ico:'DN',  desc:'Taking a hit releases an AoE blast.',   rar:'legendary',icol:'#ffd700',fn:function(p){p.deathNova=true;},                                              statFn:function(p){return 'AoE explosion every time you are hit';}},
 ];
 
 
@@ -586,7 +649,7 @@ var ALL_UPGRADES=[
 var MAX_SLOTS=4;
 var UP_BY_NAME={};
 function buildUpMap(){for(var i=0;i<ALL_UPGRADES.length;i++)UP_BY_NAME[ALL_UPGRADES[i].name]=ALL_UPGRADES[i];}
-function rarCol(rar){return rar==='epic'?'#00dcc0':rar==='rare'?'#6ee7f7':'#5ba0d0';}
+function rarCol(rar){return rar==='legendary'?'#ffd700':rar==='epic'?'#a78bfa':rar==='uncommon'?'#4ade80':'#5ba0d0';}
 
 function renderLoadout(){
   buildUpMap();
@@ -611,6 +674,7 @@ function makeUpCard(u,onClick,subLabel,subCol){
   var col=rarCol(u.rar);
   var d=document.createElement('div');d.className='vupcrd';
   d.style.setProperty('--rc',col);d.style.borderColor=col+'33';
+  if(u.rar==='legendary')d.classList.add('leg');
   d.innerHTML=
     '<div class="vupcrd-bar" style="background:'+col+'"></div>'+
     '<div class="vupcrd-body">'+
@@ -637,17 +701,16 @@ function buildPool(){
 function pickThree(pool){
   var fl=G.floor, lv=G.p.lv;
 
-  // Epic base chance starts at 14% (not 5%) and scales gently.
-  // Floor 1 = 14%, Floor 5 = 19%, Floor 10 = 24%, Floor 20 = 34%, cap 42%
-  var ec=clamp(0.14+fl*.010, 0.14, 0.42);
-  // Rare fills the middle band
-  var rc=clamp(0.28+fl*.008, 0.28, 0.48);
+  var lc=clamp(0.02+fl*.005, 0.02, 0.10); // legendary: 2%→10%
+  var ec=clamp(0.07+fl*.006, 0.07, 0.22); // epic: 7%→22% (less frequent, more exciting)
+  var uc=clamp(0.27+fl*.007, 0.27, 0.44); // uncommon: 27%→44%
 
-  // Every 4 levels: guarantee at least one epic in the draw
+  // Every 4 levels: guarantee at least one epic (or legendary) in the draw
   var mustEpic=(lv%4===0);
 
+  var legends= pool.filter(function(u){return u.rar==='legendary';});
   var epics  = pool.filter(function(u){return u.rar==='epic';});
-  var rares  = pool.filter(function(u){return u.rar==='rare';});
+  var uncommons = pool.filter(function(u){return u.rar==='uncommon';});
   var commons= pool.filter(function(u){return u.rar==='common';});
 
   var ch=[], used={};
@@ -660,15 +723,16 @@ function pickThree(pool){
     used[u.name]=true;ch.push(u);return true;
   }
 
-  // Slot 0: guaranteed epic on milestone levels
-  if(mustEpic && epics.length>0) pick(epics);
+  // Slot 0: guaranteed epic or legendary on milestone levels
+  if(mustEpic){if(legends.length>0&&Math.random()<0.25)pick(legends);else if(epics.length>0)pick(epics);else if(uncommons.length>0)pick(uncommons);}
 
   // Fill remaining slots with weighted random
   var tries=0;
   while(ch.length<3 && tries++<80){
     var r=Math.random();
-    if(r<ec           && epics.length>0  && pick(epics))  continue;
-    if(r<ec+rc        && rares.length>0  && pick(rares))  continue;
+    if(r<lc           && legends.length>0 && pick(legends)) continue;
+    if(r<lc+ec        && epics.length>0   && pick(epics))   continue;
+    if(r<lc+ec+uc     && uncommons.length>0 && pick(uncommons)) continue;
     if(commons.length>0 && pick(commons)) continue;
     if(pool.length>0) pick(pool);
   }
@@ -682,29 +746,59 @@ function pickThree(pool){
   return {cards:ch.slice(0,3), guaranteed:mustEpic};
 }
 
-function showUp(){
+/* ── REBUILD STATS (called after dropping an upgrade) ── */
+var BASE_SPD=2.2,BASE_DMG=1,BASE_FR=20,BASE_HP=10,BASE_MS=1;
+function rebuildStats(){
+  var p=G.p;
+  var sHp=p.hp,sShp=p.shp,sLSU=p.lastStandUsed;
+  // Reset all upgrade-driven stats to base
+  p.spd=BASE_SPD;p.dmg=BASE_DMG;p.fr=BASE_FR;p.maxHp=BASE_HP;p.ms=BASE_MS;
+  p.pierce=false;p.expl=false;p.homing=false;p.rapid=false;
+  p.shield=false;p.shp=0;p.maxShp=0;
+  p.lifesteal=false;p.aoe=false;p.freeze=false;
+  p.ricochet=false;p.bloodlust=false;p.ironWill=false;
+  p.vampire=false;p.chain=false;p.lastStand=false;
+  p.voidHeart=false;p.deathNova=false;
+  p._dashMult=1;p._bspeed=1;p._xpMult=1;
+  // Re-apply every remaining upgrade in order
+  buildUpMap();
+  for(var i=0;i<p.ups.length;i++){var u=UP_BY_NAME[p.ups[i]];if(u)u.fn(p);}
+  // Restore runtime state (clamp to new limits)
+  p.lastStandUsed=sLSU;
+  p.hp=Math.min(sHp,p.maxHp);
+  p.shp=p.shield?Math.min(sShp,p.maxShp):0;
+  document.getElementById('vshieldrow').style.display=(p.shield&&p.shp>0)?'flex':'none';
+  updHUD();
+}
+
+var G_pendingUpgrades=null; // cached so Back doesn't regenerate picks
+
+function showUp(reuse){
   PAU=true;buildUpMap();
-  var result=pickThree(buildPool());
-  var chosen=result.cards;
-  var guaranteed=result.guaranteed;
+  // Use cached picks if going Back from swap screen — prevents regeneration
+  if(!reuse||!G_pendingUpgrades)G_pendingUpgrades=pickThree(buildPool());
+  var chosen=G_pendingUpgrades.cards;
+  var guaranteed=G_pendingUpgrades.guaranteed;
   var full=G.p.ups.length>=MAX_SLOTS;
   var cont=document.getElementById('vupc');cont.innerHTML='';
   renderLoadout();
+  var guarLabel=guaranteed?'<span style="color:#ffd700;letter-spacing:.15em">&nbsp;&#9670; EPIC/LEGENDARY GUARANTEED</span>':'';
   if(full){
-    document.getElementById('vupsub').innerHTML='SLOTS FULL &mdash; Equip new, drop old'
-      +(guaranteed?' <span style="color:#00dcc0;letter-spacing:.15em">&nbsp;&#9670; EPIC GUARANTEED</span>':'');
-    chosen.forEach(function(u){cont.appendChild(makeUpCard(u,function(){showSwapSlots(u);},'SELECT \u2192 DROP ONE',rarCol(u.rar)));});
+    document.getElementById('vupsub').innerHTML='SLOTS FULL &mdash; Equip new, drop old'+guarLabel;
+    chosen.forEach(function(u){cont.appendChild(makeUpCard(u,function(){showSwapSlots(u);},'SELECT → DROP ONE',rarCol(u.rar)));});
   } else {
-    document.getElementById('vupsub').innerHTML='Level '+G.p.lv+' &mdash; '+G.p.ups.length+'/'+MAX_SLOTS+' slots'
-      +(guaranteed?' <span style="color:#00dcc0;letter-spacing:.15em">&nbsp;&#9670; EPIC GUARANTEED</span>':'');
+    document.getElementById('vupsub').innerHTML='Level '+G.p.lv+' &mdash; '+G.p.ups.length+'/'+MAX_SLOTS+' slots'+guarLabel;
     chosen.forEach(function(u){
-      cont.appendChild(makeUpCard(u,function(){u.fn(G.p);G.p.ups.push(u.name);PAU=false;showScr('game');},'SELECT',rarCol(u.rar)));
+      cont.appendChild(makeUpCard(u,function(){
+        u.fn(G.p);G.p.ups.push(u.name);
+        G_pendingUpgrades=null;PAU=false;showScr('game');
+      },'SELECT',rarCol(u.rar)));
     });
   }
   var skip=document.createElement('div');
   skip.style.cssText='width:100%;text-align:center;margin-top:18px;font-size:9px;letter-spacing:.2em;color:rgba(200,230,255,.25);cursor:pointer;text-transform:uppercase;padding:10px';
   skip.textContent='[ Skip ]';
-  skip.addEventListener('click',function(){PAU=false;showScr('game');});
+  skip.addEventListener('click',function(){G_pendingUpgrades=null;PAU=false;showScr('game');});
   cont.appendChild(skip);
   showScr('up');
 }
@@ -718,20 +812,68 @@ function showSwapSlots(newUpgrade){
   snapUps.forEach(function(upName,idx){
     var u=UP_BY_NAME[upName]||{name:upName,ico:'?',desc:'Current upgrade.',rar:'common',icol:'#5ba0d0',statFn:function(){return '';}};
     cont.appendChild(makeUpCard(u,function(){
-      if(swapDone)return; swapDone=true; // only fire once
-      newUpgrade.fn(G.p);
+      if(swapDone)return; swapDone=true;
+      // Replace name in array THEN rebuild all stats from scratch (drops old effects)
       G.p.ups.splice(idx,1,newUpgrade.name);
-      updHUD();PAU=false;showScr('game');
-      toast('Dropped: '+u.name+'  /  Equipped: '+newUpgrade.name);
+      rebuildStats();
+      G_pendingUpgrades=null;PAU=false;showScr('game');
+      toast('Dropped '+u.name+'  —  Equipped '+newUpgrade.name);
     },'DROP THIS','#e05c6a'));
   });
   var back=document.createElement('div');
   back.style.cssText='width:100%;text-align:center;margin-top:18px;font-size:9px;letter-spacing:.2em;color:rgba(200,230,255,.25);cursor:pointer;text-transform:uppercase;padding:10px';
   back.textContent='[ Back ]';
-  back.addEventListener('click',function(){showUp();});
+  back.addEventListener('click',function(){showUp(true);});  // reuse=true: keep same 3 cards
   cont.appendChild(back);
 }
 
+
+/* ── GLOBAL LEADERBOARD ──────────────────────────────── */
+var HAS_SHARED=(function(){try{return typeof window.storage!=='undefined'&&typeof window.storage.get==='function';}catch(e){return false;}})();
+var GBD_KEY='vp_global_v3';
+
+function loadGlobal(cb){
+  if(!HAS_SHARED){cb([]);return;}
+  window.storage.get(GBD_KEY,true).then(function(r){
+    try{cb(r?JSON.parse(r.value):[]);}catch(e){cb([]);}
+  }).catch(function(){cb([]);});
+}
+
+function submitGlobal(name,score,floor,level){
+  if(!HAS_SHARED)return;
+  var d=new Date();
+  var entry={n:(name||'VOID').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10)||'VOID',
+    score:score,floor:floor,level:level,date:(d.getMonth()+1)+'/'+d.getDate()};
+  loadGlobal(function(sc){
+    sc.push(entry);
+    sc.sort(function(a,b){return b.score-a.score;});
+    sc=sc.slice(0,25);
+    window.storage.set(GBD_KEY,JSON.stringify(sc),true).catch(function(){});
+    renderGlobal(sc,score);
+  });
+}
+
+function renderGlobal(sc,myScore){
+  var el=document.getElementById('vglb');if(!el)return;
+  if(!sc||!sc.length){
+    el.innerHTML='<div class="vglb-title">Global Leaderboard</div><div style="font-size:9px;text-align:center;color:rgba(200,230,255,.2);padding:12px 0">Be the first!</div>';
+    return;
+  }
+  var html='<div class="vglb-title">Global Leaderboard'+(HAS_SHARED?' (Live)':' (Local)')+' &mdash; Top '+Math.min(sc.length,15)+'</div>';
+  var shown=sc.slice(0,15);
+  shown.forEach(function(r,i){
+    var isMe=myScore!==undefined&&r.score===myScore;
+    var isGold=i===0;
+    html+='<div class="vglb-row'+(isMe?' isyou':'')+(isGold?' isgold':'')+'">'+
+      '<span class="vglb-rk">#'+(i+1)+'</span>'+
+      '<span class="vglb-name">'+r.n+'</span>'+
+      '<span class="vglb-score">'+r.score.toLocaleString()+'</span>'+
+      '<span class="vglb-det">F'+r.floor+' Lv'+r.level+'</span>'+
+      '<span class="vglb-date">'+r.date+'</span>'+
+    '</div>';
+  });
+  el.innerHTML=html;
+}
 
 /* ── END SCREEN ─────────────────────────────────────── */
 function showEnd(){
@@ -745,7 +887,10 @@ function showEnd(){
   document.getElementById('vesub2').textContent='Reached floor '+G.floor+' — Score: '+G.score.toLocaleString();
   var nr=document.getElementById('vnewrec');
   if(nr)nr.style.display=isPB?'block':'none';
-  renderScores('vend-scores',G.score);
+  var subrow=document.getElementById('vsubrow');
+  if(subrow)subrow.style.display=HAS_SHARED?'block':'none';
+  // Load and show global leaderboard
+  loadGlobal(function(sc){renderGlobal(sc,undefined);});
   showScr('end');
 }
 
@@ -762,6 +907,9 @@ function updHUD(){
   hpEl.className=hpPct<=0.25?'vhf lopHp':'vhf';
   document.getElementById('vhpn').textContent=p.hp+'/'+p.maxHp;
   document.getElementById('vhpn').style.color=hpCol;
+  // XP bottom bar
+  var xpEl=document.getElementById('vxpfill');
+  if(xpEl)xpEl.style.width=(p.xp/p.xpN*100)+'%';
   document.getElementById('vsc').textContent=G.score;
   var bossTag=G.floor%10===0?' [SUPER BOSS]':G.floor%5===0?' [BOSS]':'';
   document.getElementById('vfl').textContent=b.name+' F'+G.floor+bossTag;
@@ -793,6 +941,7 @@ function showScr(s){
   document.getElementById('vpausebtn').style.display=(s==='game'||s==='up')?'block':'none';
   document.getElementById('vmusbtn').style.display=(s==='game'||s==='up'||s==='pause')?'block':'none';
   document.getElementById('vfsbtn').style.display=s==='title'?'none':'block';
+  document.getElementById('vxpbar').style.display=(s==='game'||s==='up')?'block':'none';
   if(s==='title')renderScores('vtitle-scores');
 }
 
@@ -840,10 +989,14 @@ function update(){
     }
     if(gt(ptx,pty)===TC&&K['KeyE']){
       G.map[pty][ptx]=TF;K['KeyE']=false;
-      G.score+=50;G.chests++;
-      p.hp=Math.min(p.maxHp,p.hp+2);
-      toast('+2 HP  +50 Score');
-      spPts(p.x,p.y,'#f0a500',10,4);
+      var healAmt=2+Math.floor(G.floor/5);
+      var scoreAmt=50+G.floor*25;
+      var xpBonus=Math.max(0,Math.floor(G.floor/4)-1);
+      G.score+=scoreAmt;G.chests++;
+      p.hp=Math.min(p.maxHp,p.hp+healAmt);
+      for(var xi=0;xi<xpBonus;xi++)G.pks.push({x:p.x+rnd(-18,18),y:p.y+rnd(-18,18),tp:'xp',val:1,col:'#6ee7f7'});
+      toast('+'+healAmt+' HP  +'+scoreAmt+' pts'+(xpBonus?' +'+xpBonus+' XP':''));
+      spPts(p.x,p.y,'#f0a500',12,4);
     }
   }
 
@@ -919,8 +1072,28 @@ function update(){
       e._wp=(path&&path.length>0)?path:null;
     }
 
+    // Leech: regenerates 1 HP every 90 frames
+    if(e.leech&&e.hp<e.maxHp&&G.frm%90===0){e.hp=Math.min(e.maxHp,e.hp+1);spPts(e.x,e.y,'#34d399',3,1.5);}
+
+    // Turret: stationary — skip all pathfinding and movement
+    if(e.turret){
+      e._rotAngle=(e._rotAngle||0)+0.018; // slowly rotate fire pattern
+    }
+
+    // Dasher: periodic charge toward player
+    if(e.dasher){
+      e._dashCd=(e._dashCd===undefined?120:e._dashCd)-1;
+      if(e._dashCd<=0&&ed<260){e._dashCd=130;e._dashDur=16;spPts(e.x,e.y,'#ff4d4d',5,3);}
+      if(e._dashDur>0){
+        e._dashDur--;
+        var dn=nm({x:p.x-e.x,y:p.y-e.y});
+        mvObj(e,dn.x*5.5,dn.y*5.5);
+        if(ed<11+e.sz&&p.inv===0)dmgP(e.dmg);
+      }
+    }
+
     // Movement: direct when LoS, follow waypoints otherwise
-    if(ed>0){
+    if(!e.turret&&!(e.dasher&&e._dashDur>0)&&ed>0){
       var canSee=ed<TILE*1.5||hasLoS(e.x,e.y,p.x,p.y);
       var tx2=p.x,ty2=p.y;
       if(!canSee&&e._wp&&e._wp.length>0){
@@ -949,18 +1122,26 @@ function update(){
       e.enraged=true;e.spd*=1.8;e.sr=10;e.dmg=4;e.col='#ff2200';
       toast('SUPER BOSS ENRAGED!');flashScreen('rgba(255,0,0,.45)');G.shk=12;
     }
-    if(ed<11+e.sz&&p.inv===0)dmgP(e.dmg);
-    // Ranged — only shoot with LoS
-    var canShoot=hasLoS(e.x,e.y,p.x,p.y);
+    if(ed<11+e.sz&&p.inv===0&&!e.turret)dmgP(e.dmg);
+    // Ranged — only shoot with LoS (turrets always shoot in range)
+    var canShoot=e.turret?(ed<220):hasLoS(e.x,e.y,p.x,p.y);
     if(e.sr>0&&canShoot){
       e.scd--;
       if(e.scd<=0&&ed<340&&ed>0){
         e.scd=e.sr+ri(0,25);
-        var shots=e.isSuperBoss?(e.enraged?7:5):e.isBoss?3:1;
-        for(var si=0;si<shots;si++){
-          var ang3=Math.atan2(ey2,ex2)+(si-(shots-1)/2)*.3;
-          var spd2=e.isBoss?5:3.5;
-          G.ebs.push({x:e.x,y:e.y,vx:Math.cos(ang3)*spd2,vy:Math.sin(ang3)*spd2,life:80});
+        if(e.turret){
+          // Rotating spread — 3 bullets in a fixed rotating pattern
+          for(var si=0;si<3;si++){
+            var tAng=(e._rotAngle||0)+(si*(Math.PI*2/3));
+            G.ebs.push({x:e.x,y:e.y,vx:Math.cos(tAng)*3.8,vy:Math.sin(tAng)*3.8,life:90});
+          }
+        } else {
+          var shots=e.isSuperBoss?(e.enraged?7:5):e.isBoss?3:1;
+          for(var si=0;si<shots;si++){
+            var ang3=Math.atan2(ey2,ex2)+(si-(shots-1)/2)*.3;
+            var spd2=e.isBoss?5:3.5;
+            G.ebs.push({x:e.x,y:e.y,vx:Math.cos(ang3)*spd2,vy:Math.sin(ang3)*spd2,life:80});
+          }
         }
       }
     }
@@ -1123,6 +1304,24 @@ function render(){
     }
     c2.fillStyle=e.frozen?'#67e8f9':e.fl>0?'#ffffff':e.col;
     c2.beginPath();c2.arc(e.x,e.y,e.sz,0,Math.PI*2);c2.fill();
+    // Special visuals per type
+    if(e.turret){
+      var ba=e._rotAngle||0;
+      c2.strokeStyle=e.col;c2.lineWidth=3;
+      for(var bi2=0;bi2<3;bi2++){
+        var ba2=ba+bi2*(Math.PI*2/3);
+        c2.beginPath();c2.moveTo(e.x,e.y);c2.lineTo(e.x+Math.cos(ba2)*e.sz*1.7,e.y+Math.sin(ba2)*e.sz*1.7);c2.stroke();
+      }
+    }
+    if(e.leech&&e.hp<e.maxHp){
+      var lp2=0.3+0.3*Math.sin(G.frm*.14);
+      c2.strokeStyle='rgba(52,211,153,'+lp2+')';c2.lineWidth=2;
+      c2.beginPath();c2.arc(e.x,e.y,e.sz+5,0,Math.PI*2);c2.stroke();
+    }
+    if(e.dasher&&e._dashDur>0){
+      c2.globalAlpha=(e._dashDur/16)*0.55;c2.fillStyle='#ff4d4d';
+      c2.beginPath();c2.arc(e.x,e.y,e.sz+5,0,Math.PI*2);c2.fill();c2.globalAlpha=1;
+    }
     c2.globalAlpha=1;
     // HP bar
     if(e.hp<e.maxHp||e.isBoss){
@@ -1278,6 +1477,14 @@ document.getElementById('vhow').addEventListener('click',function(){
 });
 document.getElementById('vret').addEventListener('click',function(){initGame();showScr('game');W.focus();startMusic();});
 document.getElementById('vmenu').addEventListener('click',function(){showScr('title');});
+// Global leaderboard submit
+var vsubBtn=document.getElementById('vsubmitbtn');
+if(vsubBtn)vsubBtn.addEventListener('click',function(){
+  var name=document.getElementById('vpname').value.trim()||'VOID';
+  submitGlobal(name,G.score,G.floor,G.p.lv);
+  vsubBtn.textContent='Submitted!';vsubBtn.disabled=true;
+  vsubBtn.style.opacity='0.5';
+});
 document.getElementById('vpresu').addEventListener('click',function(){PAU=false;showScr('game');W.focus();});
 document.getElementById('vprestart').addEventListener('click',function(){initGame();showScr('game');W.focus();startMusic();});
 document.getElementById('vpmenu').addEventListener('click',function(){showScr('title');});
